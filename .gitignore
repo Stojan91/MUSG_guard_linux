@@ -1,0 +1,6 @@
+.venv/
+__pycache__/
+*.pyc
+data/alerts.json
+data/guard-events.jsonl
+models/
