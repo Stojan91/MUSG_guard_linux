@@ -1,0 +1,37 @@
+{
+  "scan_interval_seconds": 20,
+  "downloads_dir": "/home/stojak/Downloads",
+  "suspicious_extensions": [
+    ".exe",
+    ".scr",
+    ".bat",
+    ".cmd",
+    ".ps1",
+    ".jar",
+    ".apk",
+    ".msi",
+    ".zip"
+  ],
+  "suspicious_process_keywords": [
+    "nc",
+    "ncat",
+    "netcat",
+    "hydra",
+    "john",
+    "sqlmap",
+    "msfconsole"
+  ],
+  "suspicious_connection_ports": [
+    23,
+    4444,
+    5555,
+    6667,
+    1337
+  ],
+  "user_protection": {
+    "download_guard": true,
+    "process_guard": true,
+    "connection_guard": true,
+    "clipboard_secret_warning": true
+  }
+}
