@@ -1,4 +1,4 @@
-<img width="800" height="517" alt="image" src="https://github.com/user-attachments/assets/744276f3-d5f1-4a57-bed7-51856626e36c" />
+<img width="800" height="517" alt="image" src="readme.gif" />
 
 MUSG GUARD COMPLETE
 ===================
