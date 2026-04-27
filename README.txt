@@ -1,12 +1,11 @@
 MUSG GUARD COMPLETE
 ===================
 
-Ten generator tworzy kompletny projekt lokalnego agenta ochrony z GUI w Pythonie.
+kompletny projekt lokalnego agenta ochrony z GUI w Pythonie.
 
 Uruchomienie:
-1. python3 create_musg_guard_complete_fixed.py
-2. cd ~/musg_guard_complete
-3. python3 main.py
+1. cd ~/musg_guard_complete
+2. python3 main.py
 
 Co działa:
 - GUI desktopowe w Tkinter.
