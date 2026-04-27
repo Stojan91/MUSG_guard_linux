@@ -1,5 +1,5 @@
-<img width="800" height="967" alt="thubkali" src="reeadme" />
-# stl-thumbnailer-kali
+<img width="800" height="517" alt="image" src="https://github.com/user-attachments/assets/744276f3-d5f1-4a57-bed7-51856626e36c" />
+
 MUSG GUARD COMPLETE
 ===================
 
