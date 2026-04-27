@@ -39,8 +39,8 @@ Utwórz plik `~/.config/autostart/musg-guard.desktop`:
 [Desktop Entry]
 Type=Application
 Name=Musg Guard
-Exec=/home/stojak/musg_guard_complete/.venv/bin/python /home/stojak/musg_guard_complete/main.py
-Path=/home/stojak/musg_guard_complete
+Exec=/home/k/musg_guard_complete/.venv/bin/python /home/stojak/musg_guard_complete/main.py
+Path=/home/k/musg_guard_complete
 Terminal=false
 X-GNOME-Autostart-enabled=true
 ```
