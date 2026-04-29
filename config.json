@@ -1,6 +1,6 @@
 {
   "scan_interval_seconds": 20,
-  "downloads_dir": "/home/stojak/Downloads",
+  "downloads_dir": "/Downloads",
   "suspicious_extensions": [
     ".exe",
     ".scr",
@@ -32,7 +32,10 @@
     "download_guard": true,
     "process_guard": true,
     "connection_guard": true,
-    "desktop_notifications": true
+    "desktop_notifications": true,
+    "max_toasts": 3,
+    "toast_duration_ms": 5200,
+    "group_toasts_window_seconds": 8
   },
   "clamav": {
     "enabled": true,
@@ -40,6 +43,8 @@
     "prefer_clamdscan": true,
     "auto_block_processes": true,
     "auto_block_connections": true,
-    "notify_on_block": true
+    "scan_process_executables": true,
+    "process_scan_cooldown_seconds": 900,
+    "fallback_to_clamscan": true
   }
 }
