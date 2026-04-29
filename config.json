@@ -32,21 +32,14 @@
     "download_guard": true,
     "process_guard": true,
     "connection_guard": true,
-    "clipboard_secret_warning": true
+    "desktop_notifications": true
   },
-  "ml_enabled": true,
-  "ml_model_dir": "models/gte-small-onnx",
-  "ml_similarity_threshold": 0.62,
-  "threat_patterns": [
-    "reverse shell payload",
-    "encoded powershell downloader",
-    "credential dumping activity",
-    "bruteforce login attempt with hydra",
-    "suspicious remote access beacon",
-    "mass scanning of many open ports",
-    "malicious executable dropped in downloads",
-    "network tunnel or exfiltration channel",
-    "sql injection automation with sqlmap",
-    "netcat listener waiting for shell"
-  ]
+  "clamav": {
+    "enabled": true,
+    "auto_update_signatures": false,
+    "prefer_clamdscan": true,
+    "auto_block_processes": true,
+    "auto_block_connections": true,
+    "notify_on_block": true
+  }
 }
