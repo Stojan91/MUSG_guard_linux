@@ -53,8 +53,12 @@ class LocalProtectionAgent:
         self.config = self._load_config()
         self.status = "IDLE"
         self.thread = None
+        self.scan_thread = None
         self.stop_event = threading.Event()
         self.lock = threading.Lock()
+        self.scan_lock = threading.Lock()
+        self.scan_running = False
+        self.pending_scan = False
         self.alerts = deque(maxlen=200)
         self.seen_files = set()
         self.seen_alert_keys = set()
@@ -242,7 +246,6 @@ class LocalProtectionAgent:
         prefer_clamd = clam_cfg.get("prefer_clamdscan", True)
         fallback = clam_cfg.get("fallback_to_clamscan", True)
         self.clamd_available = self._detect_clamd_socket()
-
         if prefer_clamd and shutil.which("clamdscan") and self.clamd_available:
             return "clamdscan"
         if prefer_clamd and shutil.which("clamdscan") and not self.clamd_available:
@@ -289,7 +292,6 @@ class LocalProtectionAgent:
         self.clamav_ready = scanner is not None
         if scanner is None:
             return None, None
-
         cmd = ["clamdscan", "--fdpass", "--no-summary", str(file_path)] if scanner == "clamdscan" else ["clamscan", "--no-summary", str(file_path)]
         try:
             proc = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -338,6 +340,30 @@ class LocalProtectionAgent:
             self.log("BLOCK", f"Failed to terminate PID {pid}: {exc}", "warn")
             return False
 
+    def _launch_scan(self, reason="scheduled"):
+        with self.scan_lock:
+            if self.scan_running:
+                self.pending_scan = True
+                return False
+            self.scan_running = True
+            self.pending_scan = False
+            self.scan_thread = threading.Thread(target=self._scan_worker, args=(reason,), daemon=True)
+            self.scan_thread.start()
+            return True
+
+    def _scan_worker(self, reason):
+        try:
+            self.log("SCAN", f"Background scan started ({reason}).", "accent")
+            self._scan_all()
+        finally:
+            rerun = False
+            with self.scan_lock:
+                self.scan_running = False
+                rerun = self.pending_scan and not self.stop_event.is_set() and self.status == "ACTIVE"
+                self.pending_scan = False
+            if rerun:
+                self._launch_scan("queued")
+
     def start(self):
         if self.thread and self.thread.is_alive():
             self.status = "ACTIVE"
@@ -348,7 +374,7 @@ class LocalProtectionAgent:
         self.thread.start()
         self.log("BOOT", "Local protection agent started.", "ok")
         self.enqueue_toast("Musg Guard", "Ochrona została aktywowana.", "ok", group_key="guard-start")
-        self.manual_scan()
+        self._launch_scan("startup")
 
     def stop(self):
         self.stop_event.set()
@@ -358,13 +384,14 @@ class LocalProtectionAgent:
 
     def _loop(self):
         while not self.stop_event.is_set():
-            self._scan_all()
             interval = int(self.config.get("scan_interval_seconds", 20))
             self.stop_event.wait(max(5, interval))
+            if self.stop_event.is_set() or self.status != "ACTIVE":
+                break
+            self._launch_scan("interval")
 
     def manual_scan(self):
-        self.log("SCAN", "Manual scan requested from GUI.", "accent")
-        self._scan_all()
+        self._launch_scan("manual")
 
     def _scan_all(self):
         self.last_scan = self._now_hm()
@@ -422,12 +449,10 @@ class LocalProtectionAgent:
         except Exception as exc:
             self.log("PROC", f"Process scan failed: {exc}", "warn")
             return
-
         do_exe_scan = self._process_scanning_enabled() and not self._process_scan_blocked()
         if do_exe_scan and clam_cfg.get("prefer_clamdscan", True) and not self._detect_clamd_socket() and not shutil.which("clamscan"):
             self._block_process_scanning_temporarily()
             do_exe_scan = False
-
         for line in output.splitlines():
             line = line.strip()
             if not line:
@@ -439,7 +464,6 @@ class LocalProtectionAgent:
                 pid = int(parts[0])
             except ValueError:
                 continue
-
             low = line.lower()
             keyword_hit = any(key and key in low for key in keywords)
             infected = False
@@ -452,7 +476,6 @@ class LocalProtectionAgent:
                     if infected_raw is None and self._clam_cfg().get("prefer_clamdscan", True) and not self.clamd_available and not shutil.which("clamscan"):
                         self._block_process_scanning_temporarily()
                         do_exe_scan = False
-
             if keyword_hit or infected:
                 self.stats["process_hits"] += 1
                 details = f"PID {pid} | {line}"
@@ -523,6 +546,7 @@ class LocalProtectionAgent:
             "blocks_total": self.stats["blocks_total"],
             "clamav_ready": self.clamav_ready,
             "clamav_mode": scanner or "OFFLINE",
+            "scan_running": self.scan_running,
         }
 
     def read_logs(self, limit=300):

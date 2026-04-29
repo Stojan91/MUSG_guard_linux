@@ -1,4 +1,5 @@
 import json
+import threading
 import tkinter as tk
 from tkinter import messagebox
 from agent import LocalProtectionAgent
@@ -148,7 +149,7 @@ class DashboardView(tk.Frame):
 
     def _build(self):
         tk.Label(self, text="Musg Guard Dashboard", bg=BG, fg=ACCENT, font=("Arial", 28, "bold")).pack(anchor="w", padx=24, pady=(24, 8))
-        tk.Label(self, text="Lokalny agent ochrony z ClamAV, fallbackiem i własnymi toastami GUI.", bg=BG, fg="#d7ddff", font=("Segoe UI", 13)).pack(anchor="w", padx=24)
+        tk.Label(self, text="Lokalny agent ochrony z asynchronicznym skanowaniem w tle.", bg=BG, fg="#d7ddff", font=("Segoe UI", 13)).pack(anchor="w", padx=24)
         actions = tk.Frame(self, bg=BG)
         actions.pack(fill="x", padx=24, pady=18)
         tk.Button(actions, text="Run", command=self.run_cb, bg=PURPLE, fg="white", relief="flat", bd=0, font=("Segoe UI", 12, "bold"), padx=20, pady=10).pack(side="left")
@@ -160,7 +161,7 @@ class DashboardView(tk.Frame):
         for i in range(4):
             grid.grid_columnconfigure(i, weight=1)
         self._make_card(grid, "Stan", 0, 0)
-        self._make_card(grid, "Alerty", 0, 1)
+        self._make_card(grid, "Skan", 0, 1)
         self._make_card(grid, "Ostatni skan", 0, 2)
         self._make_card(grid, "ClamAV", 0, 3)
         self._make_card(grid, "Downloads", 1, 0)
@@ -172,10 +173,10 @@ class DashboardView(tk.Frame):
         state = self.agent.get_state()
         self.cards["Stan"][0].config(text=state["status"])
         self.cards["Stan"][1].config(text="ACTIVE = guard startuje automatycznie po starcie GUI.")
-        self.cards["Alerty"][0].config(text=str(state["alerts_total"]))
-        self.cards["Alerty"][1].config(text="Łączna liczba alertów zapisanych przez agenta.")
+        self.cards["Skan"][0].config(text="BUSY" if state["scan_running"] else "READY")
+        self.cards["Skan"][1].config(text="Skan działa w osobnym wątku i nie blokuje menu.")
         self.cards["Ostatni skan"][0].config(text=state["last_scan"])
-        self.cards["Ostatni skan"][1].config(text="Czas ostatniego lokalnego skanu.")
+        self.cards["Ostatni skan"][1].config(text=f"Alerty: {state['alerts_total']}")
         self.cards["ClamAV"][0].config(text=state["clamav_mode"])
         self.cards["ClamAV"][1].config(text=f"Sygnatury trafienia: {state['signature_hits']}")
         self.cards["Downloads"][0].config(text=str(state["suspicious_files"]))
@@ -302,6 +303,7 @@ class MusgGuardApp(tk.Tk):
         self.toast_manager = ToastManager(self)
         self.current = None
         self.views = {}
+        self.signature_update_thread = None
         self._build_shell()
         self.show_view("dashboard")
         self.protocol("WM_DELETE_WINDOW", self.on_close)
@@ -363,13 +365,23 @@ class MusgGuardApp(tk.Tk):
         self.agent.manual_scan()
         self.refresh_all()
 
-    def update_signatures(self):
+    def _update_signatures_worker(self):
         ok = self.agent.update_signatures()
+        self.after(0, lambda: self._finish_signature_update(ok))
+
+    def _finish_signature_update(self, ok):
+        self.signature_update_thread = None
         if ok:
             messagebox.showinfo("Musg Guard", "Sygnatury zaktualizowane.")
         else:
             messagebox.showwarning("Musg Guard", "Nie udało się zaktualizować sygnatur. Sprawdź freshclam i logi.")
         self.refresh_all()
+
+    def update_signatures(self):
+        if self.signature_update_thread and self.signature_update_thread.is_alive():
+            return
+        self.signature_update_thread = threading.Thread(target=self._update_signatures_worker, daemon=True)
+        self.signature_update_thread.start()
 
     def poll_toasts(self):
         for event in self.agent.pop_toast_events():
